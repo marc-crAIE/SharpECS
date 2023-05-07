@@ -25,5 +25,12 @@ namespace SharpECS.Internal.Extensions
                 Array.Resize(ref array, Math.Min(maxLength, newLength));
             }
         }
+
+        public static void RemoveAtIndex<T>(ref T[] array, int index)
+        {
+            if (index >= array.Length)
+                throw new IndexOutOfRangeException("Index is outside the bounds of the array!");
+            array = array.Where((c, idx) => idx != index).ToArray();
+        }
     }
 }

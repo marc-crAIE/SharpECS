@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
+﻿using SharpECS.Internal.Extensions;
+using SharpECS.Internal.Messages;
 
 namespace SharpECS.Internal
 {
@@ -13,10 +9,18 @@ namespace SharpECS.Internal
         private T[] Components = new T[0];
         private Dictionary<Entity, int> Mapping = new Dictionary<Entity, int>();
 
+        #region Constructors
+
         public ComponentPool(ushort RegistryID)
         {
             this.RegistryID = RegistryID;
+
+            Messenger<EntityDisposedMessage>.Subscribe(RegistryID, OnEntityDisposed);
         }
+
+        #endregion
+
+        #region General Functions
 
         public ref T Set(Entity entity, in T component)
         {
@@ -39,7 +43,7 @@ namespace SharpECS.Internal
                 return false;
 
             int componentIndex = Mapping[entity];
-            Components = Components.Where((c, index) => index != componentIndex).ToArray();
+            ArrayExtension.RemoveAtIndex(ref Components, componentIndex);
             Mapping.Remove(entity);
             return true;
         }
@@ -62,5 +66,13 @@ namespace SharpECS.Internal
             Mapping.Clear();
             Array.Resize(ref Components, 0);
         }
+
+        #endregion
+
+        #region Callbacks
+
+        private void OnEntityDisposed(in EntityDisposedMessage message) => Remove(new Entity(RegistryID, message.EntityID));
+
+        #endregion
     }
 }

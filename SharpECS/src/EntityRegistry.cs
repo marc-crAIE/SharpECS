@@ -1,10 +1,18 @@
 ﻿using SharpECS.Internal;
+using SharpECS.Internal.Extensions;
+using SharpECS.Internal.Messages;
+using SharpECS.src.Internal;
 using System.Reflection;
 
 namespace SharpECS
 {
-    public class EntityRegistry
+    public sealed class EntityRegistry : IDisposable
     {
+        // Used internally for referencing all created registries
+        internal static EntityRegistry[] Registries = new EntityRegistry[0];
+        internal static UIntDispenser EntityIDDispenser = new UIntDispenser(1);
+        internal static UShortDispenser RegistryIDDispenser = new UShortDispenser(1);
+
         public ushort ID { get; init; }
 
         private Random Rand = new Random();
@@ -14,7 +22,11 @@ namespace SharpECS
 
         public EntityRegistry()
         {
-            ID = (ushort)Rand.Next(short.MinValue, short.MaxValue);
+            ID = RegistryIDDispenser.GetFree();
+            ArrayExtension.EnsureLength(ref Registries, ID);
+            Registries[ID] = this;
+
+            Messenger<EntityDisposedMessage>.Subscribe(ID, OnEntityDisposed);
         }
 
         #endregion
@@ -27,18 +39,13 @@ namespace SharpECS
         /// <returns>The newly created entity identifier</returns>
         public Entity Create()
         {
-            uint id = (uint)Rand.Next(int.MinValue, int.MaxValue);
-
-            while (Entities.ContainsKey(id))
-            {
-                id = (uint)Rand.Next(int.MinValue, int.MaxValue);
-            }
-            Entities.Add(id, id);
-            return id;
+            uint id = EntityIDDispenser.GetFree();
+            Entities.Add(new Entity(ID, id), id);
+            return new Entity(ID, id);
         }
 
         /// <summary>
-        /// Removes an entity from the registry
+        /// Disposes and removes an entity from the registry
         /// <remarks>
         ///     <para>
         ///         This function returns true or false if the entity identifier was removed.
@@ -51,7 +58,21 @@ namespace SharpECS
         /// <returns>True if the entity identifier was removed</returns>
         public bool Remove(Entity entity)
         {
-            return Entities.Remove(entity);
+            if (!Valid(entity))
+                return false;
+            entity.Dispose();
+            return true;
+        }
+
+        /// <summary>
+        /// Dispose and clear all entities in the registry
+        /// </summary>
+        public void Clear()
+        {
+            foreach (KeyValuePair<Entity, uint> entity in Entities)
+                entity.Key.Dispose();
+
+            Entities.Clear();
         }
 
         /// <summary>
@@ -62,6 +83,15 @@ namespace SharpECS
         public bool Valid(Entity entity)
         {
             return Entities.ContainsKey(entity);
+        }
+
+        /// <summary>
+        /// Returns true or false depending on if the registry is empty
+        /// </summary>
+        /// <returns>True if the registry is empty</returns>
+        public bool Empty()
+        {
+            return Entities.Count == 0;
         }
 
         #endregion
@@ -140,6 +170,31 @@ namespace SharpECS
                 return false;
             return ComponentManager<T>.Get(ID).Has(entity);
         }
+
+        #endregion
+
+        #region Callbacks
+
+        private void OnEntityDisposed(in EntityDisposedMessage message)
+        {
+            EntityIDDispenser.Release(message.EntityID);
+            Entities.Remove(new Entity(ID, message.EntityID));
+        }
+
+        #endregion
+
+        #region IDisposeable
+
+        public void Dispose()
+        {
+            Messenger.Send(ID, new RegistryDisposedMessage(ID));
+        }
+
+        #endregion
+
+        #region Object
+
+        public override string ToString() => $"EntityRegistry({ID})";
 
         #endregion
     }

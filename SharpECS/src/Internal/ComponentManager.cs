@@ -1,16 +1,22 @@
-﻿using SharpECS.Internal;
-using SharpECS.Internal.Extensions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using SharpECS.Internal.Extensions;
+using SharpECS.Internal.Messages;
 
 namespace SharpECS.Internal
 {
     internal static class ComponentManager<T>
     {
         private static ComponentPool<T>[] Pools = new ComponentPool<T>[0];
+
+        #region Constructors
+
+        static ComponentManager()
+        {
+            Messenger<RegistryDisposedMessage>.Subscribe(0, OnRegistryDisposed);
+        }
+
+        #endregion
+
+        #region General Functions
 
         public static ref ComponentPool<T> Add(ushort registryID)
         {
@@ -35,5 +41,16 @@ namespace SharpECS.Internal
                 return ref Add(registryID);
             return ref Pools[registryID];
         }
+
+        #endregion
+
+        #region Callbacks
+
+        private static void OnRegistryDisposed(in RegistryDisposedMessage message)
+        {
+            ArrayExtension.RemoveAtIndex(ref Pools, message.RegistryID);
+        }
+
+        #endregion
     }
 }
