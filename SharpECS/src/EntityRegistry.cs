@@ -1,7 +1,6 @@
 ﻿using SharpECS.Internal;
 using SharpECS.Internal.Extensions;
 using SharpECS.Internal.Messages;
-using SharpECS.src.Internal;
 using System.Reflection;
 
 namespace SharpECS
@@ -14,9 +13,8 @@ namespace SharpECS
 
         public ushort ID { get; init; }
 
-        private Random Rand = new Random();
         private UIntDispenser EntityIDDispenser = new UIntDispenser(1);
-        private Dictionary<Entity, uint> Entities = new Dictionary<Entity, uint>();
+        private Entity[] Entities = new Entity[0];
 
         #region Constructors
 
@@ -39,18 +37,20 @@ namespace SharpECS
         /// <returns>The newly created entity identifier</returns>
         public Entity Create()
         {
-            uint id = EntityIDDispenser.GetFree();
-            Entities.Add(new Entity(ID, id), id);
-            return new Entity(ID, id);
+            uint entityID = EntityIDDispenser.GetFree();
+            // Could be an issue if somehow we exceed the max number for a 32-bit integer
+            ArrayExtension.EnsureLength(ref Entities, (int)entityID);
+            Entities[entityID] = new Entity(ID, entityID);
+            return Entities[entityID];
         }
 
         /// <summary>
         /// Disposes and removes an entity from the registry
         /// <remarks>
         ///     <para>
-        ///         This function returns true or false if the entity identifier was removed.
-        ///         If it returns false, that means the entity identifier either never existed or has
-        ///         already been removed.
+        ///     This function returns true or false if the entity identifier was removed.
+        ///     If it returns false, that means the entity identifier either never existed or has
+        ///     already been removed.
         ///     </para>
         /// </remarks>
         /// </summary>
@@ -69,10 +69,11 @@ namespace SharpECS
         /// </summary>
         public void Clear()
         {
-            foreach (KeyValuePair<Entity, uint> entity in Entities)
-                entity.Key.Dispose();
+            foreach (Entity entity in Entities)
+                entity.Dispose();
 
-            Entities.Clear();
+            Array.Clear(Entities);
+            Array.Resize(ref Entities, 0);
         }
 
         /// <summary>
@@ -82,16 +83,16 @@ namespace SharpECS
         /// <returns>True if the entity identifier is valid</returns>
         public bool Valid(Entity entity)
         {
-            return Entities.ContainsKey(entity);
+            return entity < Entities.Length;
         }
 
-        /// <summary>
+        /// <summary>/
         /// Returns true or false depending on if the registry is empty
         /// </summary>
         /// <returns>True if the registry is empty</returns>
         public bool Empty()
         {
-            return Entities.Count == 0;
+            return Entities.Length == 0;
         }
 
         #endregion
@@ -178,7 +179,7 @@ namespace SharpECS
         private void OnEntityDisposed(in EntityDisposedMessage message)
         {
             EntityIDDispenser.Release(message.EntityID);
-            Entities.Remove(new Entity(ID, message.EntityID));
+            ArrayExtension.RemoveAtIndex(ref Entities, (int)message.EntityID);
         }
 
         #endregion
@@ -188,6 +189,7 @@ namespace SharpECS
         public void Dispose()
         {
             Messenger.Send(ID, new RegistryDisposedMessage(ID));
+            ArrayExtension.RemoveAtIndex(ref Registries, ID);
         }
 
         #endregion

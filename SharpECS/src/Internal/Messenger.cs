@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace SharpECS.Internal
 {
-    public delegate void MessageHandler<T>(in T message);
+    internal delegate void MessageHandler<T>(in T message);
 
     internal static class Messenger
     {
