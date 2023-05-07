@@ -10,12 +10,12 @@ namespace SharpECS
     {
         // Used internally for referencing all created registries
         internal static EntityRegistry[] Registries = new EntityRegistry[0];
-        internal static UIntDispenser EntityIDDispenser = new UIntDispenser(1);
         internal static UShortDispenser RegistryIDDispenser = new UShortDispenser(1);
 
         public ushort ID { get; init; }
 
         private Random Rand = new Random();
+        private UIntDispenser EntityIDDispenser = new UIntDispenser(1);
         private Dictionary<Entity, uint> Entities = new Dictionary<Entity, uint>();
 
         #region Constructors
