@@ -7,12 +7,17 @@ namespace SharpECS
 {
     public class EntityRegistry
     {
+        public ushort ID { get; init; }
+
         private Random Rand = new Random();
         private Dictionary<Entity, IComponent[]> Entities = new Dictionary<Entity, IComponent[]>();
 
         #region Constructors
 
-        public EntityRegistry() { }
+        public EntityRegistry()
+        {
+            ID = (ushort)Rand.Next(short.MinValue, short.MaxValue);
+        }
 
         #endregion
 
@@ -25,6 +30,7 @@ namespace SharpECS
         public Entity Create()
         {
             uint id = (uint)Rand.Next(int.MinValue, int.MaxValue);
+
             while (Entities.ContainsKey(id))
             {
                 id = (uint)Rand.Next(int.MinValue, int.MaxValue);
