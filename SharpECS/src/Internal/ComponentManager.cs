@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace SharpECS.Internal
 {
-    public static class ComponentManager<T>
+    internal static class ComponentManager<T>
     {
         private static ComponentPool<T>[] Pools = new ComponentPool<T>[0];
 

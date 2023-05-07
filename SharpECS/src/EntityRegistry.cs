@@ -1,7 +1,5 @@
-﻿using System;
-using System.ComponentModel;
+﻿using SharpECS.Internal;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 
 namespace SharpECS
 {
@@ -10,7 +8,7 @@ namespace SharpECS
         public ushort ID { get; init; }
 
         private Random Rand = new Random();
-        private Dictionary<Entity, IComponent[]> Entities = new Dictionary<Entity, IComponent[]>();
+        private Dictionary<Entity, uint> Entities = new Dictionary<Entity, uint>();
 
         #region Constructors
 
@@ -35,7 +33,7 @@ namespace SharpECS
             {
                 id = (uint)Rand.Next(int.MinValue, int.MaxValue);
             }
-            Entities.Add(id, new IComponent[0]);
+            Entities.Add(id, id);
             return id;
         }
 
@@ -70,6 +68,14 @@ namespace SharpECS
 
         #region Component Functions
 
+        public ref T Add<T>(Entity entity, in T value)
+        {
+            if (!Valid(entity))
+                throw new IndexOutOfRangeException("Entity does not exist");
+
+            return ref ComponentManager<T>.GetOrCreate(ID).Set(entity, value);
+        }
+
         /// <summary>
         /// Adds or replaces a component to an entity
         /// </summary>
@@ -94,28 +100,17 @@ namespace SharpECS
                 throw new ArgumentException($"Invalid arguments for component \"{type}\"");
             T component = (T)ctor.Invoke(args);
 
-            if (Has<T>(entity))
-            {
-                int index = Array.FindIndex(Entities[entity], c => c.GetType() == typeof(T));
-                Entities[entity][index] = (IComponent)component;
-                return ref Unsafe.AsRef<T>(Unsafe.AsPointer(ref Entities[entity][index]));
-            }
-
-            IComponent[] components = Entities[entity];
-            Array.Resize(ref components, Entities[entity].Length + 1);
-            components[components.Length - 1] = (IComponent)component;
-            Entities[entity] = components;
-            return ref Unsafe.AsRef<T>(Unsafe.AsPointer(ref Entities[entity][components.Length - 1]));
+            return ref Add(entity, component);
         }
 
-        public bool Remove<T>(Entity entity) where T : IComponent
+        public bool Remove<T>(Entity entity)
         {
             if (!Valid(entity))
                 throw new IndexOutOfRangeException("Entity does not exist");
 
             if (!Has<T>(entity))
                 return false;
-            Entities[entity] = Entities[entity].Where(c => c.GetType() != typeof(T)).ToArray();
+            ComponentManager<T>.Get(ID).Remove(entity);
             return true;
         }
 
@@ -126,12 +121,11 @@ namespace SharpECS
         /// <param name="entity">The entity identifier</param>
         /// <returns>The component from the entity identifier</returns>
         /// <exception cref="InvalidOperationException"></exception>
-        public unsafe ref T Get<T>(Entity entity) where T : IComponent
+        public unsafe ref T Get<T>(Entity entity)
         {
             if (!Has<T>(entity))
                 throw new InvalidOperationException($"Entity does not exist or does not contain component \"{typeof(T)}\"");
-            int index = Array.FindIndex(Entities[entity], c => c.GetType() == typeof(T));
-            return ref Unsafe.AsRef<T>(Unsafe.AsPointer(ref Entities[entity][index]));
+            return ref ComponentManager<T>.Get(ID).Get(entity);
         }
 
         /// <summary>
@@ -144,7 +138,7 @@ namespace SharpECS
         {
             if (!Valid(entity))
                 return false;
-            return Entities[entity].Any(c => c.GetType() == typeof(T));
+            return ComponentManager<T>.Get(ID).Has(entity);
         }
 
         #endregion

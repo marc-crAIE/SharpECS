@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace SharpECS.Internal
 {
-    public class ComponentPool<T>
+    internal class ComponentPool<T>
     {
         private ushort RegistryID;
         private T[] Components = new T[0];
