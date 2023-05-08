@@ -31,7 +31,7 @@ namespace SharpECS
             internal EitherQuery(EntityQuery entityQuery, EitherType type)
             {
                 Query = entityQuery;
-                Entities = new Entity[0];
+                Entities = (type == EitherType.With ? new Entity[0] : entityQuery.Entities);
                 Type = type;
             }
 
@@ -56,8 +56,7 @@ namespace SharpECS
             private EitherQuery OrWithout<T>()
             {
                 Entity[] poolEntities = ComponentManager<T>.Get(Query.RegistryID).GetEntities();
-                Entity[] result = Query.Entities.Except(poolEntities).ToArray();
-                Entities = Entities.Union(result).ToArray();
+                Entities = Entities.Except(poolEntities).ToArray();
                 return this;
             }
 

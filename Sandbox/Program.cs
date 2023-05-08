@@ -17,7 +17,7 @@ namespace Sandbox
             registry.Add(e3, 256);
             registry.Add(e4, 4.3f);
 
-            EntityQuery query = registry.GetEntities().WithEither<int>().Or<float>();
+            EntityQuery query = registry.GetEntities().WithoutEither<int>().Or<float>();
 
             foreach (Entity entity in query.AsArray())
             {
