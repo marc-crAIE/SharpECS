@@ -56,6 +56,8 @@ namespace SharpECS.Internal
             return ref Components[Mapping[entity]];
         }
 
+        public Entity[] GetEntities() => Mapping.Keys.ToArray();
+
         public bool Has(Entity entity)
         {
             return Mapping.ContainsKey(entity);

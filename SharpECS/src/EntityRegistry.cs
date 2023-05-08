@@ -14,7 +14,7 @@ namespace SharpECS
         public ushort ID { get; init; }
 
         private UIntDispenser EntityIDDispenser = new UIntDispenser(1);
-        private Entity[] Entities = new Entity[0];
+        internal Entity[] Entities = new Entity[0];
 
         #region Constructors
 
@@ -25,7 +25,15 @@ namespace SharpECS
             Registries[ID] = this;
 
             Messenger<EntityDisposedMessage>.Subscribe(ID, OnEntityDisposed);
+
+            Messenger.Send(ID, new RegistryCreatedMessage(ID));
         }
+
+        #endregion
+
+        #region General Functions
+
+        public EntityQuery GetEntities() => new EntityQuery(this);
 
         #endregion
 
@@ -56,7 +64,7 @@ namespace SharpECS
         /// </summary>
         /// <param name="entity">The entity identifier to be removed</param>
         /// <returns>True if the entity identifier was removed</returns>
-        public bool Remove(Entity entity)
+        public bool Destroy(Entity entity)
         {
             if (!Valid(entity))
                 return false;
@@ -83,7 +91,7 @@ namespace SharpECS
         /// <returns>True if the entity identifier is valid</returns>
         public bool Valid(Entity entity)
         {
-            return entity < Entities.Length;
+            return entity < Entities.Length && Entities[entity] == entity;
         }
 
         /// <summary>/
@@ -134,6 +142,13 @@ namespace SharpECS
             return ref Add(entity, component);
         }
 
+        /// <summary>
+        /// Removes a component from an entity
+        /// </summary>
+        /// <typeparam name="T">The component type to remove</typeparam>
+        /// <param name="entity">The entity identifier</param>
+        /// <returns>True if removed</returns>
+        /// <exception cref="IndexOutOfRangeException">Occurs if the entity does not exist</exception>
         public bool Remove<T>(Entity entity)
         {
             if (!Valid(entity))
@@ -151,7 +166,7 @@ namespace SharpECS
         /// <typeparam name="T">The component type to get</typeparam>
         /// <param name="entity">The entity identifier</param>
         /// <returns>The component from the entity identifier</returns>
-        /// <exception cref="InvalidOperationException"></exception>
+        /// <exception cref="InvalidOperationException">Occurs if the entity does not exist or the specified component is not attached</exception>
         public unsafe ref T Get<T>(Entity entity)
         {
             if (!Has<T>(entity))

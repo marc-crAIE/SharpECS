@@ -6,7 +6,7 @@ namespace SharpECS
     public sealed class Entity : IDisposable
     {
         private uint ID;
-        private ushort RegistryID;
+        private readonly ushort RegistryID;
 
         #region Constructors
 
@@ -14,13 +14,20 @@ namespace SharpECS
         {
             this.RegistryID = registryID;
             this.ID = id;
+
+            Messenger.Send(registryID, new EntityCreatedMessage(this));
         }
 
         #endregion
 
         #region Operators
 
-        public static bool operator ==(Entity e1, Entity e2) => e1.ID == e2.ID && e1.RegistryID == e2.RegistryID;
+        public static bool operator ==(Entity e1, Entity e2)
+        {
+            if (e1 is null || e2 is null)
+                return false;
+            return e1.ID == e2.ID && e1.RegistryID == e2.RegistryID;
+        }
         public static bool operator !=(Entity e1, Entity e2) => !(e1 == e2);
 
         #endregion

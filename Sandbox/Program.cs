@@ -8,12 +8,21 @@ namespace Sandbox
         {
             EntityRegistry registry = new EntityRegistry();
             Entity e = registry.Create();
+            Entity e2 = registry.Create();
+            Entity e3 = registry.Create();
+            Entity e4 = registry.Create();
 
-            ref string str = ref registry.Add(e, "Hello");
-            str = "Hello World!";
-            Console.WriteLine(registry.Get<string>(e));
+            registry.Add(e, "Hello");
+            registry.Add(e2, 10);
+            registry.Add(e3, 256);
+            registry.Add(e4, 4.3f);
 
-            registry.Remove(e);
+            EntityQuery query = registry.GetEntities().WithEither<int>().Or<float>();
+
+            foreach (Entity entity in query.AsArray())
+            {
+                Console.WriteLine(entity.ToString());
+            }
         }
     }
 }

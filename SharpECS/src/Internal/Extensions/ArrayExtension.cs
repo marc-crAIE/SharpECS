@@ -32,5 +32,10 @@ namespace SharpECS.Internal.Extensions
                 throw new IndexOutOfRangeException("Index is outside the bounds of the array!");
             array = array.Where((c, idx) => idx != index).ToArray();
         }
+
+        public static T[] RemoveNulls<T>(T[] array)
+        {
+            return array.Where(x => x != null).ToArray();
+        }
     }
 }
