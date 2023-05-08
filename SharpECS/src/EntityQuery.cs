@@ -47,16 +47,26 @@ namespace SharpECS
 
             private EitherQuery OrWith<T>()
             {
-                Entity[] poolEntities = ComponentManager<T>.Get(Query.RegistryID).GetEntities();
-                Entity[] result = Query.Entities.Intersect(poolEntities).ToArray();
-                Entities = Entities.Union(result).ToArray();
+                try
+                {
+                    Entity[] poolEntities = ComponentManager<T>.Get(Query.RegistryID).GetEntities();
+                    Entity[] result = Query.Entities.Intersect(poolEntities).ToArray();
+                    Entities = Entities.Union(result).ToArray();
+                    return this;
+                } catch { }
+
                 return this;
             }
 
             private EitherQuery OrWithout<T>()
             {
-                Entity[] poolEntities = ComponentManager<T>.Get(Query.RegistryID).GetEntities();
-                Entities = Entities.Except(poolEntities).ToArray();
+                try
+                {
+                    Entity[] poolEntities = ComponentManager<T>.Get(Query.RegistryID).GetEntities();
+                    Entities = Entities.Except(poolEntities).ToArray();
+                    return this;
+                } catch { }
+
                 return this;
             }
 
@@ -116,16 +126,24 @@ namespace SharpECS
 
         public EntityQuery With<T>()
         {
-            Entity[] poolEntities = ComponentManager<T>.Get(RegistryID).GetEntities();
-            Entity[] result = Entities.Intersect(poolEntities).ToArray();
-            return new EntityQuery(RegistryID, result);
+            try
+            {
+                Entity[] poolEntities = ComponentManager<T>.Get(RegistryID).GetEntities();
+                Entity[] result = Entities.Intersect(poolEntities).ToArray();
+                return new EntityQuery(RegistryID, result);
+            } catch { }
+            return new EntityQuery(RegistryID, new Entity[0]);
         }
 
         public EntityQuery Without<T>()
         {
-            Entity[] poolEntities = ComponentManager<T>.Get(RegistryID).GetEntities();
-            Entity[] result = Entities.Except(poolEntities).ToArray();
-            return new EntityQuery(RegistryID, result);
+            try
+            {
+                Entity[] poolEntities = ComponentManager<T>.Get(RegistryID).GetEntities();
+                Entity[] result = Entities.Except(poolEntities).ToArray();
+                return new EntityQuery(RegistryID, result);
+            } catch { }
+            return this;
         }
 
         public EitherQuery WithEither<T>() => new EitherQuery(this, EitherType.With).Or<T>();

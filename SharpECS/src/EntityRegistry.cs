@@ -204,6 +204,8 @@ namespace SharpECS
         public void Dispose()
         {
             Messenger.Send(ID, new RegistryDisposedMessage(ID));
+            foreach (Entity entity in Entities)
+                entity.Dispose();
             ArrayExtension.RemoveAtIndex(ref Registries, ID);
         }
 
