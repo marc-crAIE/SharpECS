@@ -2,22 +2,43 @@
 
 namespace Sandbox
 {
-    internal class TestComponent : IComponent
-    {
-        public string TestData = "Hello World!";
-    }
-
     internal class Program
     {
         static void Main(string[] args)
         {
             EntityRegistry registry = new EntityRegistry();
-            Entity e = registry.Create();
+            Entity e1 = registry.Create();
+            Entity e2 = registry.Create();
+            Entity e3 = registry.Create();
+            Entity e4 = registry.Create();
+            Entity e5 = registry.Create();
 
-            TestComponent c = registry.Emplace<TestComponent>(e);
-            c.TestData = "It works?";
+            registry.Add(e1, "Hello!");
+            registry.Add(e1, 20);
 
-            Console.WriteLine(registry.Get<TestComponent>(e).TestData);
+            registry.Add(e2, 10.0f);
+
+            registry.Add(e3, 256);
+
+            registry.Add(e4, 4.3f);
+            registry.Add(e4, "World!");
+
+            registry.Add(e5, "Testing!");
+
+            EntityQuery query = registry.GetEntities().With<float>().Without<string>();
+
+            foreach (Entity entity in query.AsArray()) 
+            {
+                Console.WriteLine(entity.ToString());
+            }
+
+            EntitySet set = registry.GetEntities().AsSet();
+
+            Console.WriteLine(set.Contains(e2));
+
+            set.Remove(e2);
+
+            Console.WriteLine(set.Contains(e2));
         }
     }
 }

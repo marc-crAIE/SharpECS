@@ -1,18 +1,39 @@
-﻿using System;
-using System.ComponentModel;
+﻿using SharpECS.Internal;
+using SharpECS.Internal.Extensions;
+using SharpECS.Internal.Messages;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 
 namespace SharpECS
 {
-    public class EntityRegistry
+    public sealed class EntityRegistry : IDisposable
     {
-        private Random Rand = new Random();
-        private Dictionary<Entity, IComponent[]> Entities = new Dictionary<Entity, IComponent[]>();
+        // Used internally for referencing all created registries
+        internal static EntityRegistry[] Registries = new EntityRegistry[0];
+        internal static UShortDispenser RegistryIDDispenser = new UShortDispenser(1);
+
+        public ushort ID { get; init; }
+
+        private UIntDispenser EntityIDDispenser = new UIntDispenser(1);
+        internal Entity[] Entities = new Entity[0];
 
         #region Constructors
 
-        public EntityRegistry() { }
+        public EntityRegistry()
+        {
+            ID = RegistryIDDispenser.GetFree();
+            ArrayExtension.EnsureLength(ref Registries, ID);
+            Registries[ID] = this;
+
+            Messenger<EntityDisposedMessage>.Subscribe(ID, OnEntityDisposed);
+
+            Messenger.Send(ID, new RegistryCreatedMessage(ID));
+        }
+
+        #endregion
+
+        #region General Functions
+
+        public EntityQuery GetEntities() => new EntityQuery(this);
 
         #endregion
 
@@ -24,30 +45,43 @@ namespace SharpECS
         /// <returns>The newly created entity identifier</returns>
         public Entity Create()
         {
-            uint id = (uint)Rand.Next(int.MinValue, int.MaxValue);
-            while (Entities.ContainsKey(id))
-            {
-                id = (uint)Rand.Next(int.MinValue, int.MaxValue);
-            }
-            Entities.Add(id, new IComponent[0]);
-            return id;
+            uint entityID = EntityIDDispenser.GetFree();
+            // Could be an issue if somehow we exceed the max number for a 32-bit integer
+            ArrayExtension.EnsureLength(ref Entities, (int)entityID);
+            Entities[entityID] = new Entity(ID, entityID);
+            return Entities[entityID];
         }
 
         /// <summary>
-        /// Removes an entity from the registry
+        /// Disposes and removes an entity from the registry
         /// <remarks>
         ///     <para>
-        ///         This function returns true or false if the entity identifier was removed.
-        ///         If it returns false, that means the entity identifier either never existed or has
-        ///         already been removed.
+        ///     This function returns true or false if the entity identifier was removed.
+        ///     If it returns false, that means the entity identifier either never existed or has
+        ///     already been removed.
         ///     </para>
         /// </remarks>
         /// </summary>
         /// <param name="entity">The entity identifier to be removed</param>
         /// <returns>True if the entity identifier was removed</returns>
-        public bool Remove(Entity entity)
+        public bool Destroy(Entity entity)
         {
-            return Entities.Remove(entity);
+            if (!Valid(entity))
+                return false;
+            entity.Dispose();
+            return true;
+        }
+
+        /// <summary>
+        /// Dispose and clear all entities in the registry
+        /// </summary>
+        public void Clear()
+        {
+            foreach (Entity entity in Entities)
+                entity.Dispose();
+
+            Array.Clear(Entities);
+            Array.Resize(ref Entities, 0);
         }
 
         /// <summary>
@@ -57,12 +91,29 @@ namespace SharpECS
         /// <returns>True if the entity identifier is valid</returns>
         public bool Valid(Entity entity)
         {
-            return Entities.ContainsKey(entity);
+            return entity < Entities.Length && Entities[entity] == entity;
+        }
+
+        /// <summary>/
+        /// Returns true or false depending on if the registry is empty
+        /// </summary>
+        /// <returns>True if the registry is empty</returns>
+        public bool Empty()
+        {
+            return Entities.Length == 0;
         }
 
         #endregion
 
         #region Component Functions
+
+        public ref T Add<T>(Entity entity, in T value)
+        {
+            if (!Valid(entity))
+                throw new IndexOutOfRangeException("Entity does not exist");
+
+            return ref ComponentManager<T>.GetOrCreate(ID).Set(entity, value);
+        }
 
         /// <summary>
         /// Adds or replaces a component to an entity
@@ -88,28 +139,24 @@ namespace SharpECS
                 throw new ArgumentException($"Invalid arguments for component \"{type}\"");
             T component = (T)ctor.Invoke(args);
 
-            if (Has<T>(entity))
-            {
-                int index = Array.FindIndex(Entities[entity], c => c.GetType() == typeof(T));
-                Entities[entity][index] = (IComponent)component;
-                return ref Unsafe.AsRef<T>(Unsafe.AsPointer(ref Entities[entity][index]));
-            }
-
-            IComponent[] components = Entities[entity];
-            Array.Resize(ref components, Entities[entity].Length + 1);
-            components[components.Length - 1] = (IComponent)component;
-            Entities[entity] = components;
-            return ref Unsafe.AsRef<T>(Unsafe.AsPointer(ref Entities[entity][components.Length - 1]));
+            return ref Add(entity, component);
         }
 
-        public bool Remove<T>(Entity entity) where T : IComponent
+        /// <summary>
+        /// Removes a component from an entity
+        /// </summary>
+        /// <typeparam name="T">The component type to remove</typeparam>
+        /// <param name="entity">The entity identifier</param>
+        /// <returns>True if removed</returns>
+        /// <exception cref="IndexOutOfRangeException">Occurs if the entity does not exist</exception>
+        public bool Remove<T>(Entity entity)
         {
             if (!Valid(entity))
                 throw new IndexOutOfRangeException("Entity does not exist");
 
             if (!Has<T>(entity))
                 return false;
-            Entities[entity] = Entities[entity].Where(c => c.GetType() != typeof(T)).ToArray();
+            ComponentManager<T>.Get(ID).Remove(entity);
             return true;
         }
 
@@ -119,13 +166,12 @@ namespace SharpECS
         /// <typeparam name="T">The component type to get</typeparam>
         /// <param name="entity">The entity identifier</param>
         /// <returns>The component from the entity identifier</returns>
-        /// <exception cref="InvalidOperationException"></exception>
-        public unsafe ref T Get<T>(Entity entity) where T : IComponent
+        /// <exception cref="InvalidOperationException">Occurs if the entity does not exist or the specified component is not attached</exception>
+        public unsafe ref T Get<T>(Entity entity)
         {
             if (!Has<T>(entity))
                 throw new InvalidOperationException($"Entity does not exist or does not contain component \"{typeof(T)}\"");
-            int index = Array.FindIndex(Entities[entity], c => c.GetType() == typeof(T));
-            return ref Unsafe.AsRef<T>(Unsafe.AsPointer(ref Entities[entity][index]));
+            return ref ComponentManager<T>.Get(ID).Get(entity);
         }
 
         /// <summary>
@@ -138,8 +184,36 @@ namespace SharpECS
         {
             if (!Valid(entity))
                 return false;
-            return Entities[entity].Any(c => c.GetType() == typeof(T));
+            return ComponentManager<T>.Get(ID).Has(entity);
         }
+
+        #endregion
+
+        #region Callbacks
+
+        private void OnEntityDisposed(in EntityDisposedMessage message)
+        {
+            EntityIDDispenser.Release(message.EntityID);
+            ArrayExtension.RemoveAtIndex(ref Entities, (int)message.EntityID);
+        }
+
+        #endregion
+
+        #region IDisposeable
+
+        public void Dispose()
+        {
+            Messenger.Send(ID, new RegistryDisposedMessage(ID));
+            foreach (Entity entity in Entities)
+                entity.Dispose();
+            ArrayExtension.RemoveAtIndex(ref Registries, ID);
+        }
+
+        #endregion
+
+        #region Object
+
+        public override string ToString() => $"EntityRegistry({ID})";
 
         #endregion
     }
