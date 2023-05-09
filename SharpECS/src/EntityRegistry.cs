@@ -85,6 +85,21 @@ namespace SharpECS
         }
 
         /// <summary>
+        /// Copies an entity from the registry to another registry
+        /// </summary>
+        /// <param name="entity">The entity identifier to copy from</param>
+        /// <param name="toRegistry">The registry to copy the entity to</param>
+        /// <returns>The copied entity in the other registry</returns>
+        public Entity CopyTo(Entity entity, EntityRegistry toRegistry)
+        {
+            if (!Valid(entity)) return 0;
+
+            Entity copy = toRegistry.Create();
+            Messenger.Send(0, new ComponentCopyMessage(entity, copy));
+            return copy;
+        }
+
+        /// <summary>
         /// Check if an entity identifier is valid or not
         /// </summary>
         /// <param name="entity">The entity identifier to check</param>
@@ -203,7 +218,7 @@ namespace SharpECS
 
         public void Dispose()
         {
-            Messenger.Send(ID, new RegistryDisposedMessage(ID));
+            Messenger.Send(0, new RegistryDisposedMessage(ID));
             foreach (Entity entity in Entities)
                 entity.Dispose();
             ArrayExtension.RemoveAtIndex(ref Registries, ID);
