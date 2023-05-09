@@ -209,7 +209,7 @@ namespace SharpECS
         private void OnEntityDisposed(in EntityDisposedMessage message)
         {
             EntityIDDispenser.Release(message.EntityID);
-            ArrayExtension.RemoveAtIndex(ref Entities, (int)message.EntityID);
+            Entities[message.EntityID] = null;
         }
 
         #endregion
