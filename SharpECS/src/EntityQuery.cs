@@ -158,6 +158,8 @@ namespace SharpECS
 
         public List<Entity> AsList() => new List<Entity>(Entities.ToArray());
 
+        public EntitySet AsSet() => new EntitySet(RegistryID, Entities.ToArray());
+
         #endregion
     }
 }

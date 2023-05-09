@@ -25,12 +25,20 @@ namespace Sandbox
 
             registry.Add(e5, "Testing!");
 
-            EntityQuery query = registry.GetEntities().WithoutEither<float>().Or<int>().With<string>();
+            EntityQuery query = registry.GetEntities().With<float>().Without<string>();
 
-            foreach (Entity entity in query.AsArray())
+            foreach (Entity entity in query.AsArray()) 
             {
                 Console.WriteLine(entity.ToString());
             }
+
+            EntitySet set = registry.GetEntities().AsSet();
+
+            Console.WriteLine(set.Contains(e2));
+
+            set.Remove(e2);
+
+            Console.WriteLine(set.Contains(e2));
         }
     }
 }

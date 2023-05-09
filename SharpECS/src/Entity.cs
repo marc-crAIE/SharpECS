@@ -6,14 +6,14 @@ namespace SharpECS
     public sealed class Entity : IDisposable
     {
         private uint ID;
-        private readonly ushort RegistryID;
+        internal readonly ushort RegistryID;
 
         #region Constructors
 
         public Entity(ushort registryID, uint id)
         {
-            this.RegistryID = registryID;
-            this.ID = id;
+            RegistryID = registryID;
+            ID = id;
 
             Messenger.Send(registryID, new EntityCreatedMessage(this));
         }
@@ -34,8 +34,11 @@ namespace SharpECS
 
         #region Type Casting
 
-        public static implicit operator uint(Entity entity) => entity.ID;
-        public static implicit operator int(Entity entity) => (int)entity.ID;
+        public static implicit operator uint(Entity entity) => (entity is not null) ? entity.ID : 0;
+        public static implicit operator int(Entity entity) => (entity is not null) ? (int)entity.ID : 0;
+
+        public static implicit operator Entity(uint id) => new Entity(0, id);
+        public static implicit operator Entity(int id) => new Entity(0, (uint)id);
 
         #endregion
 
