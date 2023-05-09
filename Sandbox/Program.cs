@@ -7,38 +7,16 @@ namespace Sandbox
         static void Main(string[] args)
         {
             EntityRegistry registry = new EntityRegistry();
-            Entity e1 = registry.Create();
-            Entity e2 = registry.Create();
-            Entity e3 = registry.Create();
-            Entity e4 = registry.Create();
-            Entity e5 = registry.Create();
+            Entity original = registry.Create();
 
-            registry.Add(e1, "Hello!");
-            registry.Add(e1, 20);
+            registry.Add(original, "Hello World!");
+            registry.Add(original, 256);
 
-            registry.Add(e2, 10.0f);
+            EntityRegistry copyTo = new EntityRegistry();
+            Entity copy = registry.CopyTo(original, copyTo);
 
-            registry.Add(e3, 256);
-
-            registry.Add(e4, 4.3f);
-            registry.Add(e4, "World!");
-
-            registry.Add(e5, "Testing!");
-
-            EntityQuery query = registry.GetEntities().With<float>().Without<string>();
-
-            foreach (Entity entity in query.AsArray()) 
-            {
-                Console.WriteLine(entity.ToString());
-            }
-
-            EntitySet set = registry.GetEntities().AsSet();
-
-            Console.WriteLine(set.Contains(e2));
-
-            set.Remove(e2);
-
-            Console.WriteLine(set.Contains(e2));
+            Console.WriteLine($"Original: {registry.Get<string>(original)}, Copy: {copyTo.Get<string>(copy)}");
+            Console.WriteLine($"Original: {registry.Get<int>(original)}, Copy: {copyTo.Get<int>(copy)}");
         }
     }
 }

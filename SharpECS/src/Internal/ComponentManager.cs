@@ -12,6 +12,8 @@ namespace SharpECS.Internal
         static ComponentManager()
         {
             Messenger<RegistryDisposedMessage>.Subscribe(0, OnRegistryDisposed);
+            Messenger<ComponentCopyMessage>.Subscribe(0, OnComponentCopy);
+
         }
 
         #endregion
@@ -42,13 +44,23 @@ namespace SharpECS.Internal
             return ref Pools[registryID];
         }
 
+        private static bool Contains(ushort registryID) => registryID < Pools.Length && Pools[registryID] != null;
+
         #endregion
 
         #region Callbacks
 
         private static void OnRegistryDisposed(in RegistryDisposedMessage message)
         {
+            if (!Contains(message.RegistryID)) return;
             ArrayExtension.RemoveAtIndex(ref Pools, message.RegistryID);
+        }
+
+        private static void OnComponentCopy(in ComponentCopyMessage message)
+        {
+            if (!Contains(message.fromEntity.RegistryID)) return;
+            ComponentPool<T> fromPool = Pools[message.fromEntity.RegistryID];
+            GetOrCreate(message.toEntity.RegistryID).Set(message.toEntity, fromPool.Get(message.fromEntity));
         }
 
         #endregion

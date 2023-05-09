@@ -20,6 +20,12 @@ namespace SharpECS
 
         #endregion
 
+        #region General Functions
+
+        public bool IsNull() => ID == 0 && RegistryID == 0;
+
+        #endregion
+
         #region Operators
 
         public static bool operator ==(Entity e1, Entity e2)
