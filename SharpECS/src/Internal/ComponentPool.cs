@@ -3,11 +3,23 @@ using SharpECS.Internal.Messages;
 
 namespace SharpECS.Internal
 {
+    internal struct ComponentLink
+    {
+        public uint EntityID;
+
+        public ComponentLink(uint entityID)
+        { 
+            EntityID = entityID; 
+        }
+    }
+
     internal class ComponentPool<T>
     {
         private ushort RegistryID;
         private T[] Components = new T[0];
-        private Dictionary<Entity, int> Mapping = new Dictionary<Entity, int>();
+        private ComponentLink[] Links = new ComponentLink[0];
+        private int[] Mapping = new int[0];
+        private int LastComponentIndex = -1;
 
         #region Constructors
 
@@ -24,17 +36,25 @@ namespace SharpECS.Internal
 
         public ref T Set(Entity entity, in T component)
         {
+            int componentIndex = 0;
             if (Has(entity))
             {
-                int componentIndex = Mapping[entity];
+                componentIndex = Mapping[entity];
                 Components[componentIndex] = component;
                 return ref Components[componentIndex];
             }
 
-            Array.Resize(ref Components, Components.Length + 1);
-            Mapping.Add(entity, Components.Length - 1);
-            Components[Components.Length - 1] = component;
-            return ref Components[Components.Length - 1];
+            componentIndex = ++LastComponentIndex;
+
+            ArrayExtension.EnsureLength(ref Mapping, entity, -1);
+            Mapping[entity] = LastComponentIndex;
+
+            ArrayExtension.EnsureLength(ref Components, LastComponentIndex + 1);
+            ArrayExtension.EnsureLength(ref Links, LastComponentIndex + 1);
+            Components[componentIndex] = component;
+            Links[componentIndex] = new ComponentLink(entity);
+
+            return ref Components[componentIndex];
         }
 
         public bool Remove(Entity entity)
@@ -43,8 +63,14 @@ namespace SharpECS.Internal
                 return false;
 
             int componentIndex = Mapping[entity];
-            ArrayExtension.RemoveAtIndex(ref Components, componentIndex);
-            Mapping.Remove(entity);
+
+            Links[componentIndex] = Links[LastComponentIndex];
+            Components[componentIndex] = Components[LastComponentIndex];
+            Mapping[Links[componentIndex].EntityID] = componentIndex;
+
+            Mapping[entity] = -1;
+            Components[LastComponentIndex] = default(T);
+            LastComponentIndex--;
             return true;
         }
 
@@ -56,16 +82,25 @@ namespace SharpECS.Internal
             return ref Components[Mapping[entity]];
         }
 
-        public Entity[] GetEntities() => Mapping.Keys.ToArray();
-
-        public bool Has(Entity entity)
+        public Entity[] GetEntities()
         {
-            return Mapping.ContainsKey(entity);
+            Entity[] entities = new Entity[Mapping.Length];
+            uint i = 0;
+            uint mapIndex = 0;
+            while (mapIndex < Mapping.Length)
+            {
+                if (Mapping[mapIndex] >= 0)
+                    entities[i++] = new Entity(RegistryID, mapIndex);
+                mapIndex++;
+            }
+            return ArrayExtension.RemoveNulls(entities);
         }
+
+        public bool Has(Entity entity) => entity < Mapping.Length && Mapping[entity] != -1;
 
         public void Clear()
         {
-            Mapping.Clear();
+            Array.Resize(ref Mapping, 0);
             Array.Resize(ref Components, 0);
         }
 
