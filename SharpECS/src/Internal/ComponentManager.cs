@@ -44,7 +44,7 @@ namespace SharpECS.Internal
             return ref Pools[registryID];
         }
 
-        private static bool Contains(ushort registryID) => registryID < Pools.Length && Pools[registryID] != null;
+        public static bool Contains(ushort registryID) => registryID < Pools.Length && Pools[registryID] != null;
 
         #endregion
 

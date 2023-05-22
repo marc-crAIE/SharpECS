@@ -47,26 +47,24 @@ namespace SharpECS
 
             private EitherQuery OrWith<T>()
             {
-                try
+                if (ComponentManager<T>.Contains(Query.RegistryID))
                 {
                     Entity[] poolEntities = ComponentManager<T>.Get(Query.RegistryID).GetEntities();
                     Entity[] result = Query.Entities.Intersect(poolEntities).ToArray();
                     Entities = Entities.Union(result).ToArray();
                     return this;
-                } catch { }
-
+                }
                 return this;
             }
 
             private EitherQuery OrWithout<T>()
             {
-                try
+                if (ComponentManager<T>.Contains(Query.RegistryID))
                 {
                     Entity[] poolEntities = ComponentManager<T>.Get(Query.RegistryID).GetEntities();
                     Entities = Entities.Except(poolEntities).ToArray();
                     return this;
-                } catch { }
-
+                }
                 return this;
             }
 
@@ -126,23 +124,23 @@ namespace SharpECS
 
         public EntityQuery With<T>()
         {
-            try
+            if (ComponentManager<T>.Contains(RegistryID))
             {
                 Entity[] poolEntities = ComponentManager<T>.Get(RegistryID).GetEntities();
                 Entity[] result = Entities.Intersect(poolEntities).ToArray();
                 return new EntityQuery(RegistryID, result);
-            } catch { }
+            }
             return new EntityQuery(RegistryID, new Entity[0]);
         }
 
         public EntityQuery Without<T>()
         {
-            try
+            if (ComponentManager<T>.Contains(RegistryID))
             {
                 Entity[] poolEntities = ComponentManager<T>.Get(RegistryID).GetEntities();
                 Entity[] result = Entities.Except(poolEntities).ToArray();
                 return new EntityQuery(RegistryID, result);
-            } catch { }
+            }
             return this;
         }
 
