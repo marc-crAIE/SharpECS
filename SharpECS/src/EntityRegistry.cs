@@ -199,7 +199,9 @@ namespace SharpECS
         {
             if (!Valid(entity))
                 return false;
-            return ComponentManager<T>.Get(ID).Has(entity);
+            if (ComponentManager<T>.Contains(ID))
+                return ComponentManager<T>.Get(ID).Has(entity);
+            return false;
         }
 
         #endregion
