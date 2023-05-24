@@ -60,7 +60,8 @@ namespace SharpECS.Internal
         {
             if (!Contains(message.fromEntity.RegistryID)) return;
             ComponentPool<T> fromPool = Pools[message.fromEntity.RegistryID];
-            GetOrCreate(message.toEntity.RegistryID).Set(message.toEntity, fromPool.Get(message.fromEntity));
+            if (fromPool.Has(message.fromEntity))
+                GetOrCreate(message.toEntity.RegistryID).Set(message.toEntity, fromPool.Get(message.fromEntity));
         }
 
         #endregion
