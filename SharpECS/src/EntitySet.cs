@@ -20,7 +20,8 @@ namespace SharpECS
         {
             foreach (Entity entity in entities)
             {
-                Add(entity);
+                if (entity is not null)
+                    Add(entity);
             }
         }
 
@@ -60,6 +61,29 @@ namespace SharpECS
                     }
                     index = -1;
                 }
+            }
+        }
+
+        public void Clear()
+        {
+            Mapping = new int[0];
+            Entities = new Entity[0];
+            Count = 0;
+        }
+
+        public EntitySet Copy()
+        {
+            EntitySet copy = new EntitySet(RegistryID, Entities);
+            return copy;
+        }
+
+        public Entity this[int index]
+        {
+            get
+            {
+                if (index < 0 || index > Count)
+                    throw new ArgumentOutOfRangeException("Index is outside the bounds of the set");
+                return Entities[index];
             }
         }
     }
